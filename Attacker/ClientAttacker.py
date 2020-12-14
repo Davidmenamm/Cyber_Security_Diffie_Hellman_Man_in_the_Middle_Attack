@@ -1,10 +1,9 @@
 import time
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox
 import socket
 import threading
 import json
-from socket import AF_INET, SOCK_DGRAM
 
 nameId = []
 
@@ -14,7 +13,7 @@ class userGUI():
     def __init__(self, master1):
         self.master1 = master1
         self.master1.title("USER")
-        self.master1.resizable(0, 0)
+        self.master1.resizable(100, 100)
         self.frame = tk.Frame(self.master1)
         tk.Label(self.frame, text='Enter your name:', font=("Helvetica", 16)).pack(side='left', padx=10)
         self.nameText = tk.Entry(self.frame, width=50, borderwidth=2)
@@ -29,7 +28,6 @@ class userGUI():
             return
         nameId.append(self.nameText.get())
         self.nameText.config(state='disabled')
-        self.newWindow = tk.Toplevel(self.master1)
         self.newWindow = tk.Toplevel(self.master1)
         self.app = socketGUI(self.newWindow)
 
@@ -60,13 +58,9 @@ class socketGUI():
         self.textArea = None
         self.comboBox = None
         self.connectButton = None
-        self.fileButton = None
         self.initializeGUI()
         self.initializeSocket()
         self.listenForMsgInThread()
-        self.counterFile = 1
-        #self.initializeSocket2()
-        #self.listenForFileInThread()
 
     def initializeSocket(self):
         print("ID:", nameId[0])
@@ -93,10 +87,6 @@ class socketGUI():
         thread = threading.Thread(target=self.rcvMsgFromServer, args=(self.clientSocket,))
         thread.start()
 
-    def listenForFileInThread(self):
-        thread = threading.Thread(target=self.rcvFilesFromServer(), args=(self.soc,))
-        thread.start()
-
     def rcvMsgFromServer(self, socket):
         try:
             while True:
@@ -107,29 +97,6 @@ class socketGUI():
                 message = buffer.decode('utf-8')
 
                 print("allmsg ", message)
-
-                if "File" in message:
-                    try:
-                        extension = '.pdf'
-                        file = open('file_' + str(self.counterFile) + extension, 'wb')  # open in binary
-                        while True:
-                            socket.settimeout(3)
-                            buff = socket.recv(1024)
-                            print (buff)
-                            file.write(buff)
-                            if not buff:
-                                file.close()
-                                print("if not")
-                                break
-                        file.close()
-                        # conn.close()
-                        self.counterFile = self.counterFile + 1
-                    except:
-                        print ("socket timeout 1")
-                        file.write(b'')
-                        file.close()
-
-
 
                 if "name" in message:
                     lista = message[4:]
@@ -161,29 +128,6 @@ class socketGUI():
         except:
             print("socket timeout 2")
 
-    def rcvFilesFromServer(self, socket):
-        try:
-            print("rcvFilesFromServer")
-            # i = 0
-            # while True:
-            #     buffer = socket.recv(1024)
-            #     if not buffer:
-            #         break
-            #
-            #     if "file" in message:
-            #         file = open('file_' + str(i) + ".pdf", 'wb')  # open in binary
-            #         i = i + 1
-            #         while True:
-            #             buff = socket.recv(1024)
-            #             file.write(buff)
-            #             print(buff)
-            #             if not buff:
-            #                 file.close()
-            #                 print("if not")
-            #                 break
-        except:
-            print ("error")
-
     def displayChatArea(self):
         self.frame = tk.Frame(self.master)
         tk.Label(self.frame, text='Chat Box:', font=("Serif", 12)).pack(side='top', anchor='w')
@@ -203,8 +147,6 @@ class socketGUI():
         self.textArea.bind('<Return>', self.onEnterKeyPressed)
         self.textArea.insert('end', "Disable until connection" + '\n')
         self.textArea.config(state='disabled')
-        self.fileButton = tk.Button(self.frame, state="disabled", text="Add File", width=10, command=self.onAddFile)
-        self.fileButton.pack(side='left')
         self.frame.pack(side='top')
 
     def displayComboBox(self):
@@ -221,7 +163,6 @@ class socketGUI():
     def onConnect(self):
         self.textArea.config(state='normal')
         self.textArea.delete(1.0, 'end')
-        self.fileButton.config(state='normal')
         selected = self.comboBox.get()
         # print("selected ", self.selected[0])
         self.clientSocket.send(("connect" + nameId[0] + "to" + selected).encode('utf-8'))
@@ -230,43 +171,6 @@ class socketGUI():
     def onEnterKeyPressed(self, event):
         self.sendChat()
         self.clearText()
-
-    def onAddFile(self):
-        try:
-            root = tk.Tk()  # Tkinter Root Class
-            port = 9997
-            ip = "localhost"
-            path_given = tk.filedialog.askopenfilename(
-                parent=root, initialdir='C:/Tutorial',
-                title='Choose file',
-                filetypes=[('png images', '.png'),
-                           ('gif images', '.gif'),
-                           ('pdf files', '.pdf'),
-                           ('jpg images', '.jpg')]
-            )
-            self.clientSocket.sendall( ("File"+ nameId[0]).encode('utf-8'))
-            time.sleep(3)
-
-            sock = socket.socket()
-            sock.connect((ip, port))
-
-            file = open(path_given, "rb")
-            reader = file.read(1024)
-
-            while (reader):
-                sock.send(reader)
-                reader = file.read(1024)
-                print(reader)
-                if not reader:
-                    file.close()
-                    sock.close()
-                    break
-        except FileNotFoundError:
-            print("File not found")
-
-        root.mainloop()
-
-
 
     def clearText(self):
         self.textArea.delete(1.0, 'end')
